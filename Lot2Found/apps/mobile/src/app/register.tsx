@@ -19,6 +19,8 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [successMsg, setSuccessMsg] = useState('');
+
   const handleRegister = async () => {
     if (!name || !email || !password) {
       setError('Please fill in all fields');
@@ -29,14 +31,24 @@ export default function RegisterScreen() {
     setError('');
     
     try {
-      await signUp({ name, email, password, role });
-      router.replace('/');
+      const response = await signUp({ name, email, password, role });
+      setSuccessMsg(response.message);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
   };
+
+  if (successMsg) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText type="title" style={styles.title}>Check Your Email</ThemedText>
+        <ThemedText style={{ textAlign: 'center', marginBottom: 20 }}>{successMsg}</ThemedText>
+        <Button title="Go to Login" onPress={() => router.replace('/login')} />
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>

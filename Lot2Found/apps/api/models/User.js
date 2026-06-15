@@ -20,7 +20,27 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'ad_poster', 'ad_viewer'],
     default: 'ad_viewer',
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: {
+    type: String,
+  },
+  loginAttempts: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
+  lockUntil: {
+    type: Date,
+  },
 }, { timestamps: true });
+
+// Virtual property to check if the account is currently locked
+userSchema.virtual('isLocked').get(function() {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+});
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

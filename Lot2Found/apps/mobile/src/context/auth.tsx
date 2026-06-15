@@ -112,15 +112,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify(data),
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || 'Signup failed');
+      throw new Error(result.message || 'Signup failed');
     }
 
-    const result = await response.json();
-    await saveItem('jwt_token', result.token);
-    setToken(result.token);
-    setUser(result);
+    // Do NOT automatically log in after sign up since they need to verify their email
+    return result;
   };
 
   const signOut = async () => {
