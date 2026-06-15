@@ -3,7 +3,9 @@ import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth';
-import { Slot, useRouter, useSegments } from 'expo-router';
+import { SocketProvider } from '@/context/SocketContext';
+import { LocationSelectionProvider } from '@/context/LocationContext';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 
 function RootLayoutNav() {
@@ -29,15 +31,46 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
-      <Slot />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
+        <Stack.Screen 
+          name="location-picker" 
+          options={{ 
+            headerShown: false, 
+            presentation: 'modal' 
+          }} 
+        />
+        <Stack.Screen 
+          name="post/lost" 
+          options={{ 
+            title: 'Lost Item', 
+            headerShown: true, 
+            headerBackTitle: 'Back' 
+          }} 
+        />
+        <Stack.Screen 
+          name="post/found" 
+          options={{ 
+            title: 'Found Item', 
+            headerShown: true, 
+            headerBackTitle: 'Back' 
+          }} 
+        />
+      </Stack>
     </ThemeProvider>
   );
 }
 
 export default function TabLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <LocationSelectionProvider>
+      <SocketProvider>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </SocketProvider>
+    </LocationSelectionProvider>
   );
 }

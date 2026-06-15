@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -9,6 +10,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const rateLimit = require('express-rate-limit');
 // Apply rate limiting to all requests
@@ -23,10 +25,12 @@ app.use('/api', limiter);
 
 // Routes
 const categoryRoutes = require('./routes/category');
+const itemRoutes = require('./routes/items');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/items', itemRoutes);
 
 app.get('/', (req, res) => {
   res.send('Lost2Found API is running...');

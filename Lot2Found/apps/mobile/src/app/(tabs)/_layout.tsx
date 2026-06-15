@@ -43,6 +43,19 @@ export default function AppTabs() {
         }}
       />
       <Tabs.Screen
+        name="post"
+        options={{
+          title: 'Post',
+          tabBarIcon: ({ color }) => (
+            <Image
+              source={require('@/assets/images/tabIcons/explore.png')} // TODO: Add proper plus icon
+              tintColor={color}
+              style={{ width: 24, height: 24 }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="admin"
         options={{
           title: 'Admin',

@@ -9,6 +9,24 @@ const PORT = process.env.PORT || 5000;
 // Create HTTP server
 const server = http.createServer(app);
 
+// Setup Socket.IO
+const { Server } = require('socket.io');
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+  }
+});
+
+// Make io accessible in routes
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log('A user connected via WebSocket:', socket.id);
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
 // Start Database & Server
 async function startServer() {
   try {
