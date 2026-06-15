@@ -15,7 +15,6 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('ad_viewer');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,7 +30,7 @@ export default function RegisterScreen() {
     setError('');
     
     try {
-      const response = await signUp({ name, email, password, role });
+      const response = await signUp({ name, email, password });
       setSuccessMsg(response.message);
     } catch (e: any) {
       setError(e.message);
@@ -83,22 +82,6 @@ export default function RegisterScreen() {
         secureTextEntry
       />
 
-      {/* Basic Role Selection Simulation for Expo */}
-      <View style={styles.roleContainer}>
-        <ThemedText>Select Role:</ThemedText>
-        <View style={styles.roleButtons}>
-          <Button 
-            title="Viewer" 
-            onPress={() => setRole('ad_viewer')} 
-            color={role === 'ad_viewer' ? '#0a7ea4' : '#888'} 
-          />
-          <Button 
-            title="Poster" 
-            onPress={() => setRole('ad_poster')} 
-            color={role === 'ad_poster' ? '#0a7ea4' : '#888'} 
-          />
-        </View>
-      </View>
 
       <View style={styles.buttonContainer}>
         {loading ? (
@@ -138,14 +121,7 @@ const styles = StyleSheet.create({
     color: '#000',
     backgroundColor: '#fff',
   },
-  roleContainer: {
-    marginBottom: Spacing.four,
-  },
-  roleButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: Spacing.two,
-  },
+
   buttonContainer: {
     marginBottom: Spacing.four,
   },

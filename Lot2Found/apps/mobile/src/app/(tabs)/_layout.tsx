@@ -2,10 +2,12 @@ import { Tabs } from 'expo-router';
 import { useColorScheme, Image } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/auth';
 
 export default function AppTabs() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { user } = useAuth();
 
   return (
     <Tabs
@@ -34,6 +36,20 @@ export default function AppTabs() {
           tabBarIcon: ({ color }) => (
             <Image
               source={require('@/assets/images/tabIcons/explore.png')}
+              tintColor={color}
+              style={{ width: 24, height: 24 }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: 'Admin',
+          href: user?.role === 'admin' ? '/admin' : null,
+          tabBarIcon: ({ color }) => (
+            <Image
+              source={require('@/assets/images/tabIcons/explore.png')} // Reuse icon for now or we can use MaterialIcons later
               tintColor={color}
               style={{ width: 24, height: 24 }}
             />

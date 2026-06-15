@@ -22,8 +22,11 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Routes
+const categoryRoutes = require('./routes/category');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/categories', categoryRoutes);
 
 app.get('/', (req, res) => {
   res.send('Lost2Found API is running...');

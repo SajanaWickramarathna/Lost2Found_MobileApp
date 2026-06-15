@@ -33,7 +33,7 @@ router.post('/register', async (req, res) => {
       name,
       email,
       password,
-      role: role || 'ad_viewer',
+      role: role || 'user',
       isVerified: false,
       verificationToken,
     });

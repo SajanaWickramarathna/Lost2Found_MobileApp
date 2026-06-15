@@ -2,8 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-// Use the environment variable if defined (for physical devices), otherwise default to localhost
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
+// Hardcoding local IP explicitly to prevent Expo .env caching issues
+const API_URL = 'http://192.168.1.83:5000/api';
 
 type User = {
   _id: string;

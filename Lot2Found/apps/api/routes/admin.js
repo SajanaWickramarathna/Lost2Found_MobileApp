@@ -33,4 +33,64 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
+// ==========================================
+// CATEGORY MANAGEMENT
+// ==========================================
+
+const Category = require('../models/Category');
+
+// @route   POST /api/admin/categories
+router.post('/categories', async (req, res) => {
+  try {
+    const { name, icon, description } = req.body;
+    
+    const categoryExists = await Category.findOne({ name });
+    if (categoryExists) {
+      return res.status(400).json({ message: 'Category already exists' });
+    }
+
+    const category = await Category.create({ name, icon, description });
+    res.status(201).json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   PUT /api/admin/categories/:id
+router.put('/categories/:id', async (req, res) => {
+  try {
+    const { name, icon, description } = req.body;
+    const category = await Category.findById(req.params.id);
+
+    if (category) {
+      category.name = name || category.name;
+      category.icon = icon || category.icon;
+      category.description = description || category.description;
+
+      const updatedCategory = await category.save();
+      res.json(updatedCategory);
+    } else {
+      res.status(404).json({ message: 'Category not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   DELETE /api/admin/categories/:id
+router.delete('/categories/:id', async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id);
+
+    if (category) {
+      await Category.deleteOne({ _id: category._id });
+      res.json({ message: 'Category removed' });
+    } else {
+      res.status(404).json({ message: 'Category not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;
