@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, FlatList, TextInput, View, Button, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { StyleSheet, FlatList, View, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useColorScheme } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Spacing, Colors } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 
 type Category = {
   _id: string;
@@ -22,11 +26,12 @@ type UserItem = {
   lockUntil?: string;
 };
 
-// Hardcoding local IP explicitly to prevent Expo .env caching issues (matches auth context)
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.83:5000/api';
 
 export default function AdminDashboardScreen() {
   const { token, user } = useAuth();
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   
   const [activeTab, setActiveTab] = useState<'categories' | 'users'>('categories');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -228,44 +233,47 @@ export default function AdminDashboardScreen() {
 
   if (user?.role !== 'admin') {
     return (
-      <ThemedView style={styles.centerContainer}>
-        <ThemedText>Access Denied. Admins only.</ThemedText>
-      </ThemedView>
+      <ScreenWrapper>
+        <View style={styles.centerContainer}>
+          <ThemedText style={{ color: colors.error, fontSize: 18, fontWeight: 'bold' }}>Access Denied. Admins only.</ThemedText>
+        </View>
+      </ScreenWrapper>
     );
   }
 
   const renderCategories = () => (
     <>
-      <View style={styles.formContainer}>
-        <ThemedText type="subtitle">{isEditing ? 'Edit Category' : 'Add Category'}</ThemedText>
-        <TextInput style={styles.input} placeholder="Name (e.g. Phone)" placeholderTextColor="#888" value={name} onChangeText={setName} />
-        <TextInput style={styles.input} placeholder="Icon name (e.g. smartphone)" placeholderTextColor="#888" value={icon} onChangeText={setIcon} />
-        <TextInput style={styles.input} placeholder="Description" placeholderTextColor="#888" value={description} onChangeText={setDescription} />
+      <Card style={styles.formContainer}>
+        <ThemedText type="subtitle" style={{ marginBottom: Spacing.two }}>{isEditing ? 'Edit Category' : 'Add Category'}</ThemedText>
+        <Input placeholder="Name (e.g. Phone)" value={name} onChangeText={setName} />
+        <Input placeholder="Icon name (e.g. smartphone)" value={icon} onChangeText={setIcon} />
+        <Input placeholder="Description" value={description} onChangeText={setDescription} />
         
         <View style={styles.buttonRow}>
-          <Button title={isEditing ? 'Update' : 'Save'} onPress={handleSave} />
-          {isEditing && <Button title="Cancel" onPress={resetForm} color="red" />}
+          <Button title={isEditing ? 'Update' : 'Save'} onPress={handleSave} style={{ flex: 1, marginRight: isEditing ? Spacing.two : 0 }} />
+          {isEditing && <Button title="Cancel" onPress={resetForm} variant="outline" style={{ flex: 1 }} />}
         </View>
-      </View>
+      </Card>
 
       {loading ? (
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.tint} />
       ) : (
         <FlatList
           data={categories}
           keyExtractor={(item) => item._id}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <Card style={styles.listItem}>
               <View style={styles.cardHeader}>
-                <MaterialIcons name={item.icon as any} size={24} color="#0a7ea4" />
+                <MaterialIcons name={item.icon as any} size={24} color={colors.tint} />
                 <ThemedText style={styles.cardTitle}>{item.name}</ThemedText>
               </View>
               <ThemedText style={styles.cardDesc}>{item.description}</ThemedText>
               <View style={styles.cardActions}>
-                <Button title="Edit" onPress={() => handleEditClick(item)} />
-                <Button title="Delete" color="red" onPress={() => handleDeleteCategory(item._id)} />
+                <Button title="Edit" size="small" variant="secondary" onPress={() => handleEditClick(item)} />
+                <Button title="Delete" size="small" variant="outline" onPress={() => handleDeleteCategory(item._id)} />
               </View>
-            </View>
+            </Card>
           )}
         />
       )}
@@ -275,33 +283,34 @@ export default function AdminDashboardScreen() {
   const renderUsers = () => (
     <>
       {loading ? (
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.tint} />
       ) : (
         <FlatList
           data={usersList}
           keyExtractor={(item) => item._id}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const isBanned = item.lockUntil && new Date(item.lockUntil).getTime() > Date.now();
             return (
-              <View style={styles.card}>
+              <Card style={styles.listItem}>
                 <View style={styles.cardHeader}>
-                  <MaterialIcons name="person" size={24} color={isBanned ? 'red' : '#0a7ea4'} />
-                  <ThemedText style={[styles.cardTitle, isBanned && { color: 'red' }]}>{item.name}</ThemedText>
+                  <MaterialIcons name="person" size={24} color={isBanned ? colors.error : colors.tint} />
+                  <ThemedText style={[styles.cardTitle, isBanned && { color: colors.error }]}>{item.name}</ThemedText>
                 </View>
                 <ThemedText style={styles.cardDesc}>{item.email}</ThemedText>
                 <ThemedText style={styles.cardDesc}>Role: {item.role}</ThemedText>
-                <ThemedText style={[styles.cardDesc, isBanned ? { color: 'red' } : { color: 'green' }]}>
+                <ThemedText style={[styles.cardDesc, isBanned ? { color: colors.error } : { color: colors.success }]}>
                   Status: {isBanned ? `Banned until ${new Date(item.lockUntil!).toLocaleDateString()}` : 'Active'}
                 </ThemedText>
                 <View style={styles.cardActions}>
                   {isBanned ? (
-                    <Button title="Unban" color="green" onPress={() => handleUnbanUser(item._id)} />
+                    <Button title="Unban" size="small" variant="secondary" onPress={() => handleUnbanUser(item._id)} />
                   ) : (
-                    <Button title="Ban" color="orange" onPress={() => handleBanUser(item._id)} />
+                    <Button title="Ban" size="small" variant="outline" onPress={() => handleBanUser(item._id)} />
                   )}
-                  <Button title="Remove" color="red" onPress={() => handleDeleteUser(item._id)} />
+                  <Button title="Remove" size="small" variant="outline" onPress={() => handleDeleteUser(item._id)} />
                 </View>
-              </View>
+              </Card>
             );
           }}
         />
@@ -310,26 +319,30 @@ export default function AdminDashboardScreen() {
   );
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>Admin Dashboard</ThemedText>
+    <ScreenWrapper>
+      <View style={styles.container}>
+        <ThemedText type="title" style={styles.title}>Admin Dashboard</ThemedText>
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'categories' && styles.activeTab]}
-          onPress={() => setActiveTab('categories')}
-        >
-          <ThemedText style={activeTab === 'categories' ? styles.activeTabText : styles.tabText}>Categories</ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'users' && styles.activeTab]}
-          onPress={() => setActiveTab('users')}
-        >
-          <ThemedText style={activeTab === 'users' ? styles.activeTabText : styles.tabText}>Users</ThemedText>
-        </TouchableOpacity>
+        <View style={[styles.tabContainer, { borderColor: colors.border, backgroundColor: colors.backgroundElement }]}>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            style={[styles.tab, activeTab === 'categories' && { backgroundColor: colors.tint }]}
+            onPress={() => setActiveTab('categories')}
+          >
+            <ThemedText style={{ color: activeTab === 'categories' ? '#fff' : colors.text, fontWeight: 'bold' }}>Categories</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            style={[styles.tab, activeTab === 'users' && { backgroundColor: colors.tint }]}
+            onPress={() => setActiveTab('users')}
+          >
+            <ThemedText style={{ color: activeTab === 'users' ? '#fff' : colors.text, fontWeight: 'bold' }}>Users</ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        {activeTab === 'categories' ? renderCategories() : renderUsers()}
       </View>
-
-      {activeTab === 'categories' ? renderCategories() : renderUsers()}
-    </ThemedView>
+    </ScreenWrapper>
   );
 }
 
@@ -337,7 +350,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: Spacing.four,
-    paddingTop: 60,
   },
   centerContainer: {
     flex: 1,
@@ -353,50 +365,24 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#444',
   },
   tab: {
     flex: 1,
     paddingVertical: Spacing.two,
     alignItems: 'center',
-    backgroundColor: '#222',
-  },
-  activeTab: {
-    backgroundColor: '#0a7ea4',
-  },
-  tabText: {
-    color: '#888',
-    fontWeight: 'bold',
-  },
-  activeTabText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
   formContainer: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
     marginBottom: Spacing.four,
-  },
-  input: {
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    marginTop: Spacing.two,
-    color: '#fff',
+    padding: Spacing.three,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: Spacing.three,
+    marginTop: Spacing.one,
   },
-  card: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
+  listItem: {
+    marginBottom: Spacing.three,
     padding: Spacing.three,
-    borderRadius: Spacing.two,
-    marginBottom: Spacing.two,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -410,11 +396,12 @@ const styles = StyleSheet.create({
   cardDesc: {
     marginTop: Spacing.one,
     marginBottom: Spacing.one,
-    color: '#aaa',
+    opacity: 0.8,
   },
   cardActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: Spacing.two,
+    justifyContent: 'flex-start',
+    gap: Spacing.two,
+    marginTop: Spacing.three,
   },
 });

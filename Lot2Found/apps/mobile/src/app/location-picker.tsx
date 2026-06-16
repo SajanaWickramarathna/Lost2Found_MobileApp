@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Keyboard, Platform, Text, FlatList } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ActivityIndicator, Keyboard, Platform, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import MapView, { UrlTile, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useColorScheme } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { Colors, Spacing } from '@/constants/theme';
 import { reverseGeocode, forwardGeocode, searchLocations, LocationSuggestion } from '@/services/nominatim';
 import { useLocationSelection } from '@/context/LocationContext';
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 export default function LocationPickerScreen() {
   const router = useRouter();
@@ -75,17 +79,15 @@ export default function LocationPickerScreen() {
     setIsGeocoding(false);
   };
 
-  const regionChangeTimeout = useRef<NodeJS.Timeout | null>(null);
+  const regionChangeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleRegionChangeComplete = (newRegion: Region) => {
     setRegion(newRegion);
     
-    // Clear the previous timeout if it exists
     if (regionChangeTimeout.current) {
       clearTimeout(regionChangeTimeout.current);
     }
 
-    // Set a new timeout to update the address after 1 second of inactivity to avoid rate limiting
     regionChangeTimeout.current = setTimeout(() => {
       updateAddress(newRegion.latitude, newRegion.longitude);
     }, 1000);
@@ -141,147 +143,146 @@ export default function LocationPickerScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Top Search Bar */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ThemedText style={{fontSize: 24, lineHeight: 24}}>×</ThemedText>
-        </TouchableOpacity>
-        <TextInput
-          style={[styles.searchInput, { color: colors.text, backgroundColor: colors.backgroundElement }]}
-          placeholder="Search for a place..."
-          placeholderTextColor={colors.textSecondary}
-          value={searchQuery}
-          onChangeText={(text) => {
-            setSearchQuery(text);
-            setShowSuggestions(true);
-          }}
-          onFocus={() => setShowSuggestions(true)}
-          onSubmitEditing={handleSearch}
-          returnKeyType="search"
-        />
-        {isSearching && <ActivityIndicator size="small" color="#0a7ea4" style={{marginLeft: 10}}/>}
-      </View>
+    <ScreenWrapper>
+      <View style={styles.container}>
+        {/* Top Search Bar */}
+        <View style={[styles.searchContainer, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <MaterialIcons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.searchInputContainer}>
+            <Input
+              value={searchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setShowSuggestions(true);
+              }}
+              placeholder="Search for a place..."
+              onFocus={() => setShowSuggestions(true)}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+              style={styles.searchInput}
+            />
+          </View>
+          {isSearching && <ActivityIndicator size="small" color={colors.tint} style={{ marginLeft: Spacing.two }} />}
+        </View>
 
-      {/* Autocomplete Suggestions */}
-      {showSuggestions && suggestions.length > 0 && (
-        <View style={[styles.suggestionsContainer, { backgroundColor: colors.background }]}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item, index) => `${item.latitude}-${item.longitude}-${index}`}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                style={[styles.suggestionItem, { borderBottomColor: colors.backgroundElement }]} 
-                onPress={() => handleSuggestionPress(item)}
-              >
-                <ThemedText numberOfLines={2}>{item.displayName}</ThemedText>
-              </TouchableOpacity>
-            )}
+        {/* Autocomplete Suggestions */}
+        {showSuggestions && suggestions.length > 0 && (
+          <View style={[styles.suggestionsContainer, { backgroundColor: colors.backgroundElement, shadowColor: '#000' }]}>
+            <FlatList
+              data={suggestions}
+              keyExtractor={(item, index) => `${item.latitude}-${item.longitude}-${index}`}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={[styles.suggestionItem, { borderBottomColor: colors.border }]} 
+                  onPress={() => handleSuggestionPress(item)}
+                >
+                  <MaterialIcons name="location-on" size={20} color={colors.textSecondary} style={{ marginRight: Spacing.two }} />
+                  <ThemedText numberOfLines={2} style={{ flex: 1 }}>{item.displayName}</ThemedText>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )}
+
+        {/* Map View */}
+        {Platform.OS === 'web' ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+             <ThemedText>Maps are not supported on web in this boilerplate. Use a real device.</ThemedText>
+          </View>
+        ) : region ? (
+          <View style={styles.mapContainer}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              initialRegion={region}
+              onRegionChangeComplete={handleRegionChangeComplete}
+              showsUserLocation={true}
+            >
+              <UrlTile
+                urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                maximumZ={19}
+                flipY={false}
+              />
+            </MapView>
+            
+            {/* Fixed center marker (Uber style) */}
+            <View style={styles.markerFixed} pointerEvents="none">
+              <View style={[styles.markerDot, { backgroundColor: colors.tint, borderColor: colors.background }]} />
+              <View style={[styles.markerLine, { backgroundColor: colors.text }]} />
+            </View>
+          </View>
+        ) : (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.tint} />
+          </View>
+        )}
+
+        {/* Bottom Confirmation Box */}
+        <View style={[styles.bottomContainer, { backgroundColor: colors.background, shadowColor: '#000' }]}>
+          <ThemedText style={styles.addressLabel}>Selected Location:</ThemedText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.four }}>
+            {isGeocoding ? (
+              <ActivityIndicator size="small" color={colors.textSecondary} style={{ marginRight: Spacing.two }} />
+            ) : <MaterialIcons name="location-on" size={20} color={colors.tint} style={{ marginRight: Spacing.two }} />}
+            <ThemedText style={styles.addressText} numberOfLines={2}>
+              {address}
+            </ThemedText>
+          </View>
+
+          <Button 
+            title="Confirm Location"
+            onPress={handleConfirm}
+            disabled={isGeocoding || !region}
+            size="large"
           />
         </View>
-      )}
-
-      {/* Map View */}
-      {Platform.OS === 'web' ? (
-        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-           <ThemedText>Maps are not supported on web in this boilerplate. Use a real device.</ThemedText>
-        </View>
-      ) : region ? (
-        <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={region}
-            onRegionChangeComplete={handleRegionChangeComplete}
-            showsUserLocation={true}
-          >
-            <UrlTile
-              urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maximumZ={19}
-              flipY={false}
-            />
-          </MapView>
-          
-          {/* Fixed center marker (Uber style) */}
-          <View style={styles.markerFixed} pointerEvents="none">
-            <View style={styles.markerDot} />
-            <View style={styles.markerLine} />
-          </View>
-        </View>
-      ) : (
-        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-          <ActivityIndicator size="large" color="#0a7ea4" />
-        </View>
-      )}
-
-      {/* Bottom Confirmation Box */}
-      <View style={[styles.bottomContainer, { backgroundColor: colors.background }]}>
-        <ThemedText style={styles.addressLabel}>Selected Location:</ThemedText>
-        <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 16}}>
-          {isGeocoding ? (
-            <ActivityIndicator size="small" color={colors.textSecondary} style={{marginRight: 8}}/>
-          ) : null}
-          <ThemedText style={styles.addressText} numberOfLines={2}>
-            {address}
-          </ThemedText>
-        </View>
-
-        <TouchableOpacity 
-          style={[styles.confirmButton, { backgroundColor: '#0a7ea4' }]} 
-          onPress={handleConfirm}
-          disabled={isGeocoding || !region}
-        >
-          <Text style={styles.confirmButtonText}>Confirm Location</Text>
-        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   searchContainer: {
     flexDirection: 'row',
-    padding: 16,
+    padding: Spacing.three,
     alignItems: 'center',
     zIndex: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderBottomWidth: 1,
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
+    padding: Spacing.two,
+    marginRight: Spacing.one,
+  },
+  searchInputContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   searchInput: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    marginBottom: 0, // Override Input component margin
   },
   suggestionsContainer: {
     position: 'absolute',
     top: 70, // Below search container
-    left: 16,
-    right: 16,
+    left: Spacing.four,
+    right: Spacing.four,
     maxHeight: 200,
-    borderRadius: 8,
+    borderRadius: Spacing.two,
     elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
     zIndex: 20,
   },
   suggestionItem: {
-    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.three,
     borderBottomWidth: 1,
   },
   mapContainer: {
@@ -303,9 +304,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#0a7ea4',
     borderWidth: 3,
-    borderColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -315,38 +314,26 @@ const styles = StyleSheet.create({
   markerLine: {
     width: 2,
     height: 20,
-    backgroundColor: '#333',
   },
   bottomContainer: {
-    padding: 24,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    padding: Spacing.six,
+    borderTopLeftRadius: Spacing.four,
+    borderTopRightRadius: Spacing.four,
     marginTop: -20, // Overlap the map slightly
     elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     zIndex: 10,
   },
   addressLabel: {
     fontSize: 12,
     color: '#888',
-    marginBottom: 4,
+    marginBottom: Spacing.one,
   },
   addressText: {
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
-  },
-  confirmButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });

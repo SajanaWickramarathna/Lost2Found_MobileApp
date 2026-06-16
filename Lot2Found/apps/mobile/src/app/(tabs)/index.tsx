@@ -10,13 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Spacing, Shadows } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
 import { useAuth } from '@/context/auth';
+import { Card } from '@/components/ui/Card';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
-// The backend serves images from the root URL /uploads/...
 const BASE_URL = API_URL.replace('/api', '');
 
 type FilterType = 'all' | 'lost' | 'found';
@@ -77,7 +76,7 @@ export default function HomeScreen() {
 
   const renderItem = ({ item }: { item: Item }) => {
     const isLost = item.type === 'lost';
-    const badgeColor = isLost ? '#ff4d4d' : '#4CAF50';
+    const badgeColor = isLost ? colors.error : colors.success;
     
     const getImageUrl = (path: string) => {
       if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -91,7 +90,7 @@ export default function HomeScreen() {
       : require('@/assets/images/react-logo.png'); // fallback image
 
     return (
-      <ThemedView type="backgroundElement" style={styles.card}>
+      <Card style={styles.cardContainer}>
         <Image source={imageUrl} style={styles.cardImage} resizeMode="cover" />
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
@@ -118,7 +117,7 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
-      </ThemedView>
+      </Card>
     );
   };
 
@@ -126,13 +125,14 @@ export default function HomeScreen() {
     const isActive = filterType === value;
     return (
       <TouchableOpacity 
+        activeOpacity={0.7}
         style={[
           styles.filterTab, 
-          isActive && { backgroundColor: colors.tint, borderColor: colors.tint }
+          { backgroundColor: isActive ? colors.tint : colors.backgroundElement, borderColor: isActive ? colors.tint : colors.border }
         ]} 
         onPress={() => setFilterType(value)}
       >
-        <ThemedText style={[styles.filterTabText, isActive && { color: '#fff' }]}>
+        <ThemedText style={[styles.filterTabText, { color: isActive ? '#fff' : colors.text }]}>
           {title}
         </ThemedText>
       </TouchableOpacity>
@@ -142,9 +142,12 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.header}>
-        <ThemedText type="title">Lost & Found</ThemedText>
-        <TouchableOpacity onPress={signOut}>
-          <ThemedText style={{ color: colors.tint }}>Sign Out</ThemedText>
+        <View>
+          <ThemedText type="title" style={styles.mainTitle}>Lost & Found</ThemedText>
+          <ThemedText style={styles.subTitle}>Discover or report items</ThemedText>
+        </View>
+        <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
+          <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>Sign Out</ThemedText>
         </TouchableOpacity>
       </View>
 
@@ -170,7 +173,7 @@ export default function HomeScreen() {
           }
           ListEmptyComponent={
             <View style={styles.centerContainer}>
-              <ThemedText>No items found.</ThemedText>
+              <ThemedText style={{ color: colors.textDim }}>No items found.</ThemedText>
             </View>
           }
         />
@@ -187,79 +190,93 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
+  mainTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  subTitle: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginTop: 2,
+  },
+  signOutBtn: {
+    padding: Spacing.one,
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.three,
+    gap: Spacing.two,
   },
   filterTab: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#ccc',
   },
   filterTabText: {
     fontWeight: '600',
+    fontSize: 14,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    gap: 16,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.six,
   },
-  card: {
-    borderRadius: 12,
+  cardContainer: {
+    padding: 0,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   cardImage: {
     width: '100%',
-    height: 180,
+    height: 200,
     backgroundColor: '#eee',
   },
   cardContent: {
-    padding: 12,
+    padding: Spacing.three,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.two,
   },
   cardTitle: {
     flex: 1,
-    marginRight: 8,
+    marginRight: Spacing.two,
+    fontSize: 18,
   },
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   badgeText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
   cardDescription: {
-    marginBottom: 12,
+    marginBottom: Spacing.three,
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.8,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingTop: Spacing.two,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: Spacing.four,
   },
 });

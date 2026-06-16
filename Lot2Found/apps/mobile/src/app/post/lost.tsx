@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TextInput, ScrollView, Button, Image, TouchableOpacity, Alert, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
-import MapView, { Marker, Circle, UrlTile } from 'react-native-maps';
 import { Picker } from '@react-native-picker/picker';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing, Colors } from '@/constants/theme';
 import { useColorScheme } from 'react-native';
-import { reverseGeocode } from '@/services/nominatim';
 import { useAuth } from '@/context/auth';
 import { useLocationSelection } from '@/context/LocationContext';
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.83:5000/api';
 
@@ -37,10 +37,8 @@ export default function LostItemScreen() {
 
   useEffect(() => {
     fetchCategories();
-    // Don't auto-fetch location here, wait for user to use the picker
   }, []);
 
-  // Sync selected location from global context
   useEffect(() => {
     if (selectedLocation) {
       setLocation({
@@ -61,8 +59,6 @@ export default function LostItemScreen() {
       console.error('Failed to load categories', e);
     }
   };
-
-  // Removed handleMapPress since we use the dedicated LocationPickerScreen now
 
   const pickImages = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -96,7 +92,6 @@ export default function LostItemScreen() {
       formData.append('locationName', locationName);
       formData.append('radius', radius);
 
-      // Web/Mobile FormData differences for images
       images.forEach((uri, index) => {
         const fileType = uri.substring(uri.lastIndexOf('.') + 1);
         formData.append('images', {
@@ -111,8 +106,6 @@ export default function LostItemScreen() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
-          // Note: Do not set Content-Type to multipart/form-data manually in React Native
-          // Fetch handles the boundary automatically when passing FormData
         },
         body: formData,
       });
@@ -120,7 +113,7 @@ export default function LostItemScreen() {
       const data = await response.json();
       if (response.ok) {
         Alert.alert('Success', 'Item posted successfully!');
-        setSelectedLocation(null); // Clear context
+        setSelectedLocation(null);
         router.replace('/');
       } else {
         throw new Error(data.message || 'Failed to post item');
@@ -133,112 +126,110 @@ export default function LostItemScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <ThemedText style={styles.label}>Title *</ThemedText>
-        <TextInput
-          style={[styles.input, { color: colors.text, borderColor: colors.backgroundSelected }]}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="E.g. Lost Black Wallet"
-          placeholderTextColor={colors.textSecondary}
-        />
+    <ScreenWrapper scrollable keyboardOffset={100}>
+      <View style={styles.container}>
+        <ThemedText type="title" style={[styles.title, { color: colors.error }]}>Report Lost Item</ThemedText>
+        <ThemedText style={styles.subtitle}>Please provide details so others can help find it.</ThemedText>
 
-        <ThemedText style={styles.label}>Description *</ThemedText>
-        <TextInput
-          style={[styles.input, styles.textArea, { color: colors.text, borderColor: colors.backgroundSelected }]}
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={4}
-          placeholder="Details about the item..."
-          placeholderTextColor={colors.textSecondary}
-        />
+        <Card elevated={false} style={styles.formCard}>
+          <Input
+            label="Title *"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="E.g. Lost Black Wallet"
+          />
 
-        <ThemedText style={styles.label}>Category *</ThemedText>
-        <View style={[styles.pickerContainer, { borderColor: colors.backgroundSelected }]}>
-          <Picker
-            selectedValue={category}
-            onValueChange={(itemValue) => setCategory(itemValue)}
-            style={{ color: colors.text }}
-            dropdownIconColor={colors.text}
-          >
-            {categories.map((cat) => (
-              <Picker.Item key={cat._id} label={cat.name} value={cat._id} />
+          <Input
+            label="Description *"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={4}
+            style={styles.textArea}
+            placeholder="Details about the item..."
+          />
+
+          <ThemedText style={styles.label}>Category *</ThemedText>
+          <View style={[styles.pickerContainer, { borderColor: colors.border, backgroundColor: colors.backgroundElement }]}>
+            <Picker
+              selectedValue={category}
+              onValueChange={(itemValue) => setCategory(itemValue)}
+              style={{ color: colors.text }}
+              dropdownIconColor={colors.text}
+            >
+              {categories.map((cat) => (
+                <Picker.Item key={cat._id} label={cat.name} value={cat._id} />
+              ))}
+            </Picker>
+          </View>
+
+          <Input
+            label="Search Radius (km) *"
+            value={radius}
+            onChangeText={setRadius}
+            keyboardType="numeric"
+            placeholder="Radius in km"
+          />
+
+          <ThemedText style={styles.label}>Images ({images.length}/10)</ThemedText>
+          <View style={styles.imagesRow}>
+            {images.map((img, i) => (
+              <Image key={i} source={{ uri: img }} style={styles.thumbnail} />
             ))}
-          </Picker>
-        </View>
+            {images.length < 10 && (
+              <TouchableOpacity style={[styles.addPhoto, { borderColor: colors.textSecondary }]} onPress={pickImages}>
+                <ThemedText style={{ color: colors.textSecondary, fontSize: 24 }}>+</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
 
-        <ThemedText style={styles.label}>Search Radius (km) *</ThemedText>
-        <TextInput
-          style={[styles.input, { color: colors.text, borderColor: colors.backgroundSelected }]}
-          value={radius}
-          onChangeText={setRadius}
-          keyboardType="numeric"
-          placeholder="Radius in km"
-          placeholderTextColor={colors.textSecondary}
-        />
-
-        <ThemedText style={styles.label}>Images ({images.length}/10)</ThemedText>
-        <View style={styles.imagesRow}>
-          {images.map((img, i) => (
-            <Image key={i} source={{ uri: img }} style={styles.thumbnail} />
-          ))}
-          {images.length < 10 && (
-            <TouchableOpacity style={[styles.addPhoto, { borderColor: colors.textSecondary }]} onPress={pickImages}>
-              <ThemedText style={{ color: colors.textSecondary }}>+ Add</ThemedText>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <ThemedText style={styles.label}>Location *</ThemedText>
-        <TouchableOpacity 
-          style={[styles.locationButton, { borderColor: colors.backgroundSelected }]} 
-          onPress={() => router.push('/location-picker')}
-        >
-          <ThemedText style={{ color: location ? colors.text : colors.textSecondary }}>
-            {location ? locationName : 'Select location from map'}
-          </ThemedText>
-          <ThemedText style={{ color: '#0a7ea4', marginTop: 4 }}>Tap to open map ➔</ThemedText>
-        </TouchableOpacity>
+          <ThemedText style={[styles.label, { marginTop: Spacing.four }]}>Location *</ThemedText>
+          <TouchableOpacity 
+            style={[styles.locationButton, { borderColor: colors.border, backgroundColor: colors.backgroundElement }]} 
+            onPress={() => router.push('/location-picker')}
+          >
+            <ThemedText style={{ color: location ? colors.text : colors.textSecondary, flex: 1 }} numberOfLines={1}>
+              {location ? locationName : 'Select location from map'}
+            </ThemedText>
+            <View style={[styles.mapIcon, { backgroundColor: colors.error }]}>
+              <ThemedText style={{ color: '#fff', fontSize: 12 }}>Map</ThemedText>
+            </View>
+          </TouchableOpacity>
+        </Card>
 
         <View style={styles.submitBtn}>
-          <Button title={loading ? "Posting..." : "Post Lost Item"} onPress={handleSubmit} disabled={loading} color="#FF6B6B" />
+          <Button 
+            title="Post Lost Item" 
+            onPress={handleSubmit} 
+            loading={loading} 
+            size="large"
+            style={{ backgroundColor: colors.error }}
+          />
         </View>
-        
-      </ScrollView>
-    </ThemedView>
+      </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  scroll: {
     padding: Spacing.four,
-    paddingBottom: Spacing.six * 2,
   },
   title: {
-    marginBottom: Spacing.four,
-    textAlign: 'center',
-    color: '#FF6B6B',
-  },
-  label: {
-    fontWeight: 'bold',
-    marginTop: Spacing.three,
     marginBottom: Spacing.one,
   },
-  hint: {
-    fontSize: 12,
-    color: '#888',
+  subtitle: {
+    marginBottom: Spacing.four,
+    opacity: 0.7,
+  },
+  formCard: {
+    padding: Spacing.four,
     marginBottom: Spacing.two,
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
-    backgroundColor: 'transparent',
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: Spacing.one,
   },
   textArea: {
     height: 100,
@@ -248,36 +239,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Spacing.two,
     overflow: 'hidden',
+    marginBottom: Spacing.three,
   },
   imagesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
-    marginTop: Spacing.two,
+    marginTop: Spacing.one,
   },
   thumbnail: {
     width: 70,
     height: 70,
-    borderRadius: Spacing.one,
+    borderRadius: Spacing.two,
   },
   addPhoto: {
     width: 70,
     height: 70,
-    borderRadius: Spacing.one,
+    borderRadius: Spacing.two,
     borderWidth: 1,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
   },
   locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderRadius: Spacing.two,
     padding: Spacing.three,
     marginTop: Spacing.one,
-    backgroundColor: 'transparent',
-    alignItems: 'flex-start',
+  },
+  mapIcon: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 8,
   },
   submitBtn: {
-    marginTop: Spacing.six,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.six,
   }
 });
