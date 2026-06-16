@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, FlatList, TextInput, View, Button, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, FlatList, TextInput, View, Button, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
@@ -14,13 +14,23 @@ type Category = {
   description: string;
 };
 
+type UserItem = {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  lockUntil?: string;
+};
+
 // Hardcoding local IP explicitly to prevent Expo .env caching issues (matches auth context)
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.83:5000/api';
 
 export default function AdminDashboardScreen() {
   const { token, user } = useAuth();
   
+  const [activeTab, setActiveTab] = useState<'categories' | 'users'>('categories');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [usersList, setUsersList] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form State
@@ -31,8 +41,12 @@ export default function AdminDashboardScreen() {
   const [description, setDescription] = useState('');
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    if (activeTab === 'categories') {
+      fetchCategories();
+    } else {
+      fetchUsers();
+    }
+  }, [activeTab]);
 
   const fetchCategories = async () => {
     try {
@@ -41,6 +55,23 @@ export default function AdminDashboardScreen() {
       const data = await res.json();
       if (res.ok) {
         setCategories(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUsersList(data);
       }
     } catch (e) {
       console.error(e);
@@ -97,7 +128,7 @@ export default function AdminDashboardScreen() {
     setDescription(category.description);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteCategory = async (id: string) => {
     Alert.alert('Confirm Delete', 'Are you sure you want to delete this category?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -122,6 +153,79 @@ export default function AdminDashboardScreen() {
     ]);
   };
 
+  const submitBan = async (id: string, durationDays: number) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/users/${id}/ban`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ durationDays })
+      });
+      if (res.ok) {
+        Alert.alert('Success', `User banned for ${durationDays} days`);
+        fetchUsers();
+      } else {
+        Alert.alert('Error', 'Failed to ban user');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  const handleBanUser = (id: string) => {
+    Alert.alert('Ban User', 'Select ban duration:', [
+      { text: '1 Day', onPress: () => submitBan(id, 1) },
+      { text: '7 Days', onPress: () => submitBan(id, 7) },
+      { text: '30 Days', onPress: () => submitBan(id, 30) },
+      { text: 'Permanent', onPress: () => submitBan(id, 36500) },
+      { text: 'Cancel', style: 'cancel' }
+    ]);
+  };
+
+  const handleUnbanUser = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/users/${id}/unban`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        Alert.alert('Success', 'User unbanned');
+        fetchUsers();
+      } else {
+        Alert.alert('Error', 'Failed to unban user');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  const handleDeleteUser = (id: string) => {
+    Alert.alert('Confirm Delete', 'Are you sure you want to completely remove this user?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await fetch(`${API_URL}/admin/users/${id}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+              fetchUsers();
+            } else {
+              Alert.alert('Error', 'Failed to delete user');
+            }
+          } catch (e: any) {
+            Alert.alert('Error', e.message);
+          }
+        }
+      }
+    ]);
+  };
+
   if (user?.role !== 'admin') {
     return (
       <ThemedView style={styles.centerContainer}>
@@ -130,11 +234,8 @@ export default function AdminDashboardScreen() {
     );
   }
 
-  return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>Admin Dashboard</ThemedText>
-
-      {/* Admin Form */}
+  const renderCategories = () => (
+    <>
       <View style={styles.formContainer}>
         <ThemedText type="subtitle">{isEditing ? 'Edit Category' : 'Add Category'}</ThemedText>
         <TextInput style={styles.input} placeholder="Name (e.g. Phone)" placeholderTextColor="#888" value={name} onChangeText={setName} />
@@ -147,7 +248,6 @@ export default function AdminDashboardScreen() {
         </View>
       </View>
 
-      {/* Category List */}
       {loading ? (
         <ActivityIndicator size="large" />
       ) : (
@@ -163,12 +263,72 @@ export default function AdminDashboardScreen() {
               <ThemedText style={styles.cardDesc}>{item.description}</ThemedText>
               <View style={styles.cardActions}>
                 <Button title="Edit" onPress={() => handleEditClick(item)} />
-                <Button title="Delete" color="red" onPress={() => handleDelete(item._id)} />
+                <Button title="Delete" color="red" onPress={() => handleDeleteCategory(item._id)} />
               </View>
             </View>
           )}
         />
       )}
+    </>
+  );
+
+  const renderUsers = () => (
+    <>
+      {loading ? (
+        <ActivityIndicator size="large" />
+      ) : (
+        <FlatList
+          data={usersList}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => {
+            const isBanned = item.lockUntil && new Date(item.lockUntil).getTime() > Date.now();
+            return (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <MaterialIcons name="person" size={24} color={isBanned ? 'red' : '#0a7ea4'} />
+                  <ThemedText style={[styles.cardTitle, isBanned && { color: 'red' }]}>{item.name}</ThemedText>
+                </View>
+                <ThemedText style={styles.cardDesc}>{item.email}</ThemedText>
+                <ThemedText style={styles.cardDesc}>Role: {item.role}</ThemedText>
+                <ThemedText style={[styles.cardDesc, isBanned ? { color: 'red' } : { color: 'green' }]}>
+                  Status: {isBanned ? `Banned until ${new Date(item.lockUntil!).toLocaleDateString()}` : 'Active'}
+                </ThemedText>
+                <View style={styles.cardActions}>
+                  {isBanned ? (
+                    <Button title="Unban" color="green" onPress={() => handleUnbanUser(item._id)} />
+                  ) : (
+                    <Button title="Ban" color="orange" onPress={() => handleBanUser(item._id)} />
+                  )}
+                  <Button title="Remove" color="red" onPress={() => handleDeleteUser(item._id)} />
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
+    </>
+  );
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedText type="title" style={styles.title}>Admin Dashboard</ThemedText>
+
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'categories' && styles.activeTab]}
+          onPress={() => setActiveTab('categories')}
+        >
+          <ThemedText style={activeTab === 'categories' ? styles.activeTabText : styles.tabText}>Categories</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'users' && styles.activeTab]}
+          onPress={() => setActiveTab('users')}
+        >
+          <ThemedText style={activeTab === 'users' ? styles.activeTabText : styles.tabText}>Users</ThemedText>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'categories' ? renderCategories() : renderUsers()}
     </ThemedView>
   );
 }
@@ -186,6 +346,31 @@ const styles = StyleSheet.create({
   },
   title: {
     marginBottom: Spacing.four,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: Spacing.four,
+    borderRadius: Spacing.two,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
+    backgroundColor: '#222',
+  },
+  activeTab: {
+    backgroundColor: '#0a7ea4',
+  },
+  tabText: {
+    color: '#888',
+    fontWeight: 'bold',
+  },
+  activeTabText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   formContainer: {
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -224,11 +409,12 @@ const styles = StyleSheet.create({
   },
   cardDesc: {
     marginTop: Spacing.one,
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.one,
     color: '#aaa',
   },
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: Spacing.two,
   },
 });

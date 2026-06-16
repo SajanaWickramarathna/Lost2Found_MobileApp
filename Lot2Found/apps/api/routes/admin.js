@@ -33,6 +33,44 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
+// @route   PUT /api/admin/users/:id/ban
+router.put('/users/:id/ban', async (req, res) => {
+  try {
+    const { durationDays } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      const days = durationDays || 7;
+      user.lockUntil = Date.now() + days * 24 * 60 * 60 * 1000;
+      user.loginAttempts = 0; // reset attempts
+      await user.save();
+      res.json({ message: `User banned for ${days} days` });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   PUT /api/admin/users/:id/unban
+router.put('/users/:id/unban', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      user.lockUntil = undefined;
+      user.loginAttempts = 0;
+      await user.save();
+      res.json({ message: 'User unbanned' });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // ==========================================
 // CATEGORY MANAGEMENT
 // ==========================================
