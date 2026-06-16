@@ -45,6 +45,23 @@ const uploadFileToCloudinary = async (file, { folder = 'lost2found' } = {}) => {
     resource_type: "auto",
   };
 
+  if (file.buffer) {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+      
+      const stream = require('stream');
+      const bufferStream = new stream.PassThrough();
+      bufferStream.end(file.buffer);
+      bufferStream.pipe(uploadStream);
+    });
+  }
+
   if (file.path) {
     try {
       const result = await cloudinary.uploader.upload(file.path, uploadOptions);

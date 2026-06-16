@@ -7,23 +7,8 @@ const Item = require('../models/Item');
 const { protect } = require('../middleware/auth');
 const { uploadFileToCloudinary } = require('../services/cloudinary.service');
 
-// Setup multer for local storage
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    const uploadPath = path.join(__dirname, '../uploads/');
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename(req, file, cb) {
-    cb(
-      null,
-      `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`
-    );
-  },
-});
+// Setup multer for memory storage to upload directly to Cloudinary
+const storage = multer.memoryStorage();
 
 function checkFileType(file, cb) {
   const filetypes = /jpg|jpeg|png|webp/;
