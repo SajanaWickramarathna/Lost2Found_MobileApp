@@ -39,7 +39,17 @@
       ],
       "expo-secure-store",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin",
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "1254964833225829",
+          "clientToken": "80e4464d4e7950e1eb6b30b97a48dc97",
+          "displayName": "Lot2Found",
+          "scheme": "fb1254964833225829"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

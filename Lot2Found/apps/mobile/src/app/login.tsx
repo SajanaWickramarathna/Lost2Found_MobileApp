@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, TextInput, View, Button, ActivityIndicator } from 'react-native';
 import { useRouter, Link } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import * as Facebook from 'expo-auth-session/providers/facebook';
-import { makeRedirectUri } from 'expo-auth-session';
-
-WebBrowser.maybeCompleteAuthSession();
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -22,33 +18,47 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const redirectUri = makeRedirectUri();
-  console.log('Generated Redirect URI:', redirectUri);
-
-  const [googleReq, googleRes, promptGoogle] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'placeholder',
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    redirectUri,
-  });
-
-  const [fbReq, fbRes, promptFacebook] = Facebook.useAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_ID || 'placeholder',
-  });
-
+  // Configure Google SDK
   useEffect(() => {
-    if (googleRes?.type === 'success') {
-      const { id_token } = googleRes.params;
-      handleOAuthLogin('google', { idToken: id_token });
-    }
-  }, [googleRes]);
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    });
+  }, []);
 
-  useEffect(() => {
-    if (fbRes?.type === 'success') {
-      const { accessToken } = fbRes.authentication!;
-      handleOAuthLogin('facebook', { accessToken });
+  const promptGoogle = async () => {
+    try {
+      setLoading(true);
+      await GoogleSignin.hasPlayServices();
+      const userInfo: any = await GoogleSignin.signIn();
+      // Depending on the SDK version, idToken is either at the root or under .data
+      const idToken = userInfo.idToken || userInfo.data?.idToken;
+      if (idToken) {
+        await handleOAuthLogin('google', { idToken });
+      }
+    } catch (e: any) {
+      setError(e.message || 'Google Login canceled or failed');
+    } finally {
+      setLoading(false);
     }
-  }, [fbRes]);
+  };
+
+  const promptFacebook = async () => {
+    try {
+      setLoading(true);
+      const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+      if (!result.isCancelled) {
+        const data = await AccessToken.getCurrentAccessToken();
+        if (data?.accessToken) {
+          await handleOAuthLogin('facebook', { accessToken: data.accessToken.toString() });
+        }
+      }
+    } catch (e: any) {
+      setError(e.message || 'Facebook Login canceled or failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOAuthLogin = async (provider: 'google' | 'facebook', payload: any) => {
     setLoading(true);
@@ -118,9 +128,9 @@ export default function LoginScreen() {
       <View style={styles.socialContainer}>
         <ThemedText style={{ textAlign: 'center', marginBottom: 10 }}>Or sign in with</ThemedText>
         <View style={styles.socialButtons}>
-          <Button title="Google" onPress={() => promptGoogle()} disabled={!googleReq || loading} color="#DB4437" />
+          <Button title="Google" onPress={() => promptGoogle()} disabled={loading} color="#DB4437" />
           <View style={{ width: 10 }} />
-          <Button title="Facebook" onPress={() => promptFacebook()} disabled={!fbReq || loading} color="#4267B2" />
+          <Button title="Facebook" onPress={() => promptFacebook()} disabled={loading} color="#4267B2" />
         </View>
       </View>
 
