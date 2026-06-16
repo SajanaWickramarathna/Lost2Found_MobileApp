@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.onexuniverse.lot2found"
+      "package": "com.onexuniverse.lot2found",
+      "usesCleartextTraffic": true
     },
     "web": {
       "output": "static",
