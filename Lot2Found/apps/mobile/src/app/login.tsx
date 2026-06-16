@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, TextInput, View, Button, ActivityIndicator } from 'react-native';
 import { useRouter, Link } from 'expo-router';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
-
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -18,60 +15,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Configure Google SDK
-  useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    });
-  }, []);
 
-  const promptGoogle = async () => {
-    try {
-      setLoading(true);
-      await GoogleSignin.hasPlayServices();
-      const userInfo: any = await GoogleSignin.signIn();
-      // Depending on the SDK version, idToken is either at the root or under .data
-      const idToken = userInfo.idToken || userInfo.data?.idToken;
-      if (idToken) {
-        await handleOAuthLogin('google', { idToken });
-      }
-    } catch (e: any) {
-      setError(e.message || 'Google Login canceled or failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const promptFacebook = async () => {
-    try {
-      setLoading(true);
-      const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
-      if (!result.isCancelled) {
-        const data = await AccessToken.getCurrentAccessToken();
-        if (data?.accessToken) {
-          await handleOAuthLogin('facebook', { accessToken: data.accessToken.toString() });
-        }
-      }
-    } catch (e: any) {
-      setError(e.message || 'Facebook Login canceled or failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOAuthLogin = async (provider: 'google' | 'facebook', payload: any) => {
-    setLoading(true);
-    setError('');
-    try {
-      await signInWithOAuth(provider, payload);
-      router.replace('/');
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -125,14 +69,7 @@ export default function LoginScreen() {
         )}
       </View>
 
-      <View style={styles.socialContainer}>
-        <ThemedText style={{ textAlign: 'center', marginBottom: 10 }}>Or sign in with</ThemedText>
-        <View style={styles.socialButtons}>
-          <Button title="Google" onPress={() => promptGoogle()} disabled={loading} color="#DB4437" />
-          <View style={{ width: 10 }} />
-          <Button title="Facebook" onPress={() => promptFacebook()} disabled={loading} color="#4267B2" />
-        </View>
-      </View>
+
 
       <View style={styles.footer}>
         <ThemedText>Don't have an account? </ThemedText>
