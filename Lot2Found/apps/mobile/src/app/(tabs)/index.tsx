@@ -78,8 +78,16 @@ export default function HomeScreen() {
   const renderItem = ({ item }: { item: Item }) => {
     const isLost = item.type === 'lost';
     const badgeColor = isLost ? '#ff4d4d' : '#4CAF50';
+    
+    const getImageUrl = (path: string) => {
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+      }
+      return `${BASE_URL}${path}`;
+    };
+
     const imageUrl = item.images && item.images.length > 0 
-      ? { uri: `${BASE_URL}${item.images[0]}` } 
+      ? { uri: getImageUrl(item.images[0]) } 
       : require('@/assets/images/react-logo.png'); // fallback image
 
     return (

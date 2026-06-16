@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const Item = require('../models/Item');
 const { protect } = require('../middleware/auth');
+const { uploadFileToCloudinary } = require('../services/cloudinary.service');
 
 // Setup multer for local storage
 const storage = multer.diskStorage({
@@ -51,7 +52,12 @@ router.post('/', protect, upload.array('images', 10), async (req, res) => {
   try {
     const { type, title, description, category, latitude, longitude, locationName, radius } = req.body;
     
-    const imagePaths = req.files ? req.files.map((file) => `/uploads/${file.filename}`) : [];
+    let imagePaths = [];
+    if (req.files && req.files.length > 0) {
+      const uploadPromises = req.files.map((file) => uploadFileToCloudinary(file));
+      const results = await Promise.all(uploadPromises);
+      imagePaths = results.map((result) => result.secure_url);
+    }
 
     const itemData = {
       user: req.user._id,
