@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "86458ab7-5d88-4ce2-9c1c-a41b7daaa8be"
+      }
+    },
+    "android": {
+      "package": "com.onexuniverse.lot2found"
+    }
+  }
+}

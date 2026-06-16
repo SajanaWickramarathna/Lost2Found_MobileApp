@@ -17,7 +17,8 @@ type AuthContextType = {
   isLoading: boolean;
   token: string | null;
   signIn: (data: any) => Promise<void>;
-  signUp: (data: any) => Promise<void>;
+  signUp: (data: any) => Promise<any>;
+  signInWithOAuth: (provider: 'google' | 'facebook', tokenPayload: any) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -128,8 +129,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const signInWithOAuth = async (provider: 'google' | 'facebook', tokenPayload: any) => {
+    const response = await fetch(`${API_URL}/auth/${provider}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tokenPayload),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || `${provider} login failed`);
+    }
+
+    const result = await response.json();
+    await saveItem('jwt_token', result.token);
+    setToken(result.token);
+    setUser(result);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, token, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, token, signIn, signUp, signInWithOAuth, signOut }}>
       {children}
     </AuthContext.Provider>
   );

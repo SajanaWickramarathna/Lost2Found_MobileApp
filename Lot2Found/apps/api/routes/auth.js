@@ -1,11 +1,14 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
+const axios = require('axios');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { sendVerificationEmail } = require('../utils/templates/Email');
 
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'fallback_secret', {
@@ -164,6 +167,102 @@ router.get('/profile', protect, async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   POST /api/auth/google
+router.post('/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ message: 'Google ID Token is required' });
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    
+    if (!payload) {
+      return res.status(400).json({ message: 'Invalid Google Token' });
+    }
+
+    const { sub: googleId, email, name } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        authProvider: 'google',
+        providerId: googleId,
+        isVerified: true,
+      });
+    } else {
+      if (!user.providerId) {
+        user.authProvider = 'google';
+        user.providerId = googleId;
+        user.isVerified = true;
+        await user.save();
+      }
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500).json({ message: 'Authentication with Google failed' });
+  }
+});
+
+// @route   POST /api/auth/facebook
+router.post('/facebook', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    if (!accessToken) return res.status(400).json({ message: 'Facebook Access Token is required' });
+
+    const { data } = await axios.get(`https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`);
+    
+    if (!data || !data.email) {
+      return res.status(400).json({ message: 'Invalid Facebook Token or Email not provided' });
+    }
+
+    const { id: facebookId, email, name } = data;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        authProvider: 'facebook',
+        providerId: facebookId,
+        isVerified: true,
+      });
+    } else {
+      if (!user.providerId) {
+        user.authProvider = 'facebook';
+        user.providerId = facebookId;
+        user.isVerified = true;
+        await user.save();
+      }
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    console.error('Facebook Auth Error:', error);
+    res.status(500).json({ message: 'Authentication with Facebook failed' });
   }
 });
 
