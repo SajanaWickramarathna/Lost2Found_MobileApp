@@ -12,6 +12,13 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://192.168.1.83:5000/api",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "238193657337-8au1jd27d8pt0d1n61gufcrm8cn6il3e.apps.googleusercontent.com",
+        "EXPO_PUBLIC_FACEBOOK_CLIENT_ID": "1254964833225829",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "238193657337-tifdcod061pe4u8jbnjj3klp821n7pn6.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "238193657337-12sck26q9jcp8bf3rji5dm14th07c0t8.apps.googleusercontent.com"
       }
     },
     "production": {
